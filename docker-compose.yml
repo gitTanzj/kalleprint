@@ -3,7 +3,10 @@ services:
     image: mysql
     restart: always
     healthcheck:
-      test: "exit 0"
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     volumes:
       - db_data:/var/lib/mysql
     environment:
@@ -26,7 +29,8 @@ services:
       DB_PASSWORD: root
       DB_NAME: kalleprint
     depends_on:
-      - db
+      db:
+        condition: service_healthy
   client:
     build:
       context: ./client
