@@ -1,0 +1,11 @@
+INSERT INTO prints (`id`, `filament_id`, `path_to_file`, `filament_amount_used`, `estimated_print_time`) VALUES
+    (UUID_TO_BIN('c0000000-0001-0001-0001-000000000001'), UUID_TO_BIN('f11a2e3d-0001-0001-0001-000000000001'), 'uploads/benchy.stl',           50,  '02:30:00'),
+    (UUID_TO_BIN('c0000000-0002-0002-0002-000000000002'), UUID_TO_BIN('f11a2e3d-0002-0002-0002-000000000002'), 'uploads/vase_twist.stl',        180, '08:45:00'),
+    (UUID_TO_BIN('c0000000-0003-0003-0003-000000000003'), UUID_TO_BIN('f11a2e3d-0001-0001-0001-000000000001'), 'uploads/keychain.stl',           25,  '01:15:00'),
+    (UUID_TO_BIN('c0000000-0004-0004-0004-000000000004'), UUID_TO_BIN('f11a2e3d-0003-0003-0003-000000000003'), 'uploads/phone_stand.stl',        90,  '04:20:00'),
+    (UUID_TO_BIN('c0000000-0005-0005-0005-000000000005'), UUID_TO_BIN('f11a2e3d-0002-0002-0002-000000000002'), 'uploads/plant_pot.stl',          260, '12:00:00'),
+    (UUID_TO_BIN('c0000000-0006-0006-0006-000000000006'), UUID_TO_BIN('f11a2e3d-0001-0001-0001-000000000001'), 'uploads/gear_set.stl',           135, '06:30:00'),
+    (UUID_TO_BIN('c0000000-0007-0007-0007-000000000007'), UUID_TO_BIN('f11a2e3d-0003-0003-0003-000000000003'), 'uploads/cable_clip.stl',          36,  '01:45:00'),
+    (UUID_TO_BIN('c0000000-0008-0008-0008-000000000008'), UUID_TO_BIN('f11a2e3d-0002-0002-0002-000000000002'), 'uploads/enclosure_panel.stl',    500, '22:15:00'),
+    (UUID_TO_BIN('c0000000-0009-0009-0009-000000000009'), UUID_TO_BIN('f11a2e3d-0001-0001-0001-000000000001'), 'uploads/miniature_figure.stl',    70,  '03:10:00'),
+    (UUID_TO_BIN('c0000000-0010-0010-0010-000000000010'), UUID_TO_BIN('f11a2e3d-0003-0003-0003-000000000003'), 'uploads/bracket_mount.stl',      198, '09:30:00');
