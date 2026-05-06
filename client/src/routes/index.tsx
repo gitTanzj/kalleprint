@@ -32,6 +32,17 @@ function App() {
     }
   }
 
+  async function handleFilamentChange(filamentId: string) {
+    if (state.stage !== 'quote') return
+    const file = state.file
+    try {
+      const quote = await getQuote.mutateAsync({ file, filamentId })
+      setState((prev) => prev.stage === 'quote' ? { ...prev, quote, filamentId } : prev)
+    } catch {
+      // error shown via getQuote.error in QuoteSection
+    }
+  }
+
   function handleConfirmed(res: OrderResponse, customerName: string) {
     if (state.stage !== 'quote') return
     setState({ stage: 'confirmed', quote: state.quote, file: state.file, filamentId: state.filamentId, orderId: res.id, customerName })
@@ -73,6 +84,9 @@ function App() {
           quote={state.quote}
           filename={state.file.name}
           filamentId={state.filamentId}
+          isRequoting={getQuote.isPending}
+          requoteError={getQuote.error?.message}
+          onFilamentChange={handleFilamentChange}
           onRequote={handleRequote}
           onConfirmed={handleConfirmed}
         />

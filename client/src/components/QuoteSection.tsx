@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { Loader2 } from 'lucide-react'
 import { useFilaments, usePlaceOrder } from '#/lib/queries'
 import type { Quote, OrderResponse } from '#/lib/api'
 
@@ -6,11 +7,14 @@ interface Props {
   quote: Quote
   filename: string
   filamentId: string
+  isRequoting?: boolean
+  requoteError?: string
+  onFilamentChange: (filamentId: string) => void
   onRequote: () => void
   onConfirmed: (result: OrderResponse, customerName: string) => void
 }
 
-export default function QuoteSection({ quote, filename, filamentId: initialFilamentId, onRequote, onConfirmed }: Props) {
+export default function QuoteSection({ quote, filename, filamentId, isRequoting, requoteError, onFilamentChange, onRequote, onConfirmed }: Props) {
   const { data: filaments = [], isLoading: filamentsLoading } = useFilaments()
   const placeOrder = usePlaceOrder()
 
@@ -18,7 +22,12 @@ export default function QuoteSection({ quote, filename, filamentId: initialFilam
   const [email, setEmail] = useState('')
   const [address, setAddress] = useState('')
   const [notes, setNotes] = useState('')
-  const [filamentId, setFilamentId] = useState(initialFilamentId)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleFilamentChange(id: string) {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => onFilamentChange(id), 500)
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -42,8 +51,18 @@ export default function QuoteSection({ quote, filename, filamentId: initialFilam
         <div className="md:w-72 flex-shrink-0">
           <div className="border-2 border-white p-8">
             <p className="mb-1 text-sm uppercase tracking-widest text-gray-400">Your quote</p>
-            <p className="mb-4 text-5xl font-bold">{price}</p>
+            {isRequoting ? (
+              <div className="mb-4 flex items-center gap-3">
+                <Loader2 className="animate-spin text-gray-400" size={32} />
+                <span className="text-lg text-gray-400">Recalculating…</span>
+              </div>
+            ) : (
+              <p className="mb-4 text-5xl font-bold">{price}</p>
+            )}
             <p className="mb-6 break-all text-sm text-gray-300">{filename}</p>
+            {requoteError && (
+              <p className="mb-4 text-sm text-red-400">{requoteError}</p>
+            )}
             <button
               onClick={onRequote}
               className="text-sm underline underline-offset-2 hover:text-gray-300"
@@ -98,8 +117,8 @@ export default function QuoteSection({ quote, filename, filamentId: initialFilam
             <select
               required
               value={filamentId}
-              onChange={(e) => setFilamentId(e.target.value)}
-              disabled={filamentsLoading}
+              onChange={(e) => handleFilamentChange(e.target.value)}
+              disabled={filamentsLoading || isRequoting}
               className="border-2 border-white bg-gray-700 px-3 py-2 font-normal text-white focus:outline-none focus:border-gray-300 disabled:opacity-50"
             >
               <option value="" disabled>
@@ -127,7 +146,7 @@ export default function QuoteSection({ quote, filename, filamentId: initialFilam
           <div>
             <button
               type="submit"
-              disabled={placeOrder.isPending}
+              disabled={placeOrder.isPending || !name || !email || !address || !filamentId}
               className="hover-black border-2 border-white bg-white px-8 py-3 font-semibold text-black disabled:cursor-not-allowed disabled:opacity-40"
             >
               {placeOrder.isPending ? 'Placing order…' : 'Place Order'}
