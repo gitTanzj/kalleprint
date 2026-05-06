@@ -81,7 +81,7 @@ func (h *Handler) postQuote(w http.ResponseWriter, r *http.Request) {
 	args = append(args, tmpInput.Name())
 
 	if out, err := exec.Command(config.Envs.PrusaSlicerPath, args...).CombinedOutput(); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("slicer failed: %s", out))
+		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("slicer failed: %w: %s", err, out))
 		return
 	}
 
@@ -103,7 +103,7 @@ func (h *Handler) postQuote(w http.ResponseWriter, r *http.Request) {
 	}
 	price = math.Round(price*100) / 100
 
-	utils.WriteJSON(w, http.StatusOK, map[string]float64{"price_eur": price})
+	utils.WriteJSON(w, http.StatusOK, map[string]float64{"price_eur": price, "price_og": grams * filament.CostPerGram})
 }
 
 func parseFilamentGrams(gcodePath string) (float64, error) {
@@ -113,13 +113,19 @@ func parseFilamentGrams(gcodePath string) (float64, error) {
 	}
 	defer f.Close()
 
+	const defaultDensity = 1.25
+
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.HasPrefix(line, "; filament used [g] =") {
+		if strings.HasPrefix(line, "; filament used [cm3] =") {
 			parts := strings.SplitN(line, "=", 2)
 			if len(parts) == 2 {
-				return strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+				cm3, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+				if err != nil {
+					return 0, err
+				}
+				return cm3 * defaultDensity, nil
 			}
 		}
 	}

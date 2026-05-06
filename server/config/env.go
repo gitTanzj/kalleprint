@@ -38,7 +38,7 @@ func initConfig() Config {
 
 		UploadPath: getEnv("UPLOAD_PATH", "/kalleprint/uploads/quotes"),
 
-		PrusaSlicerPath:   getEnv("PRUSA_SLICER_PATH", "prusa-slicer"),
+		PrusaSlicerPath:   getEnv("PRUSA_SLICER_PATH", "/prusa-slicer/AppRun"),
 		PrusaSlicerConfig: getEnv("PRUSA_SLICER_CONFIG", "/kalleprint/config/prusa-slicer.ini"),
 	}
 }

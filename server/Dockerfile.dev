@@ -7,6 +7,19 @@ RUN go install github.com/air-verse/air@latest
 COPY go.mod go.sum ./
 RUN go mod download
 
+ARG PRUSA_APPIMAGE_URL
+RUN apt-get update && apt-get install -y --no-install-recommends wget ca-certificates libglib2.0-0 libgomp1 libgl1 libgtk-3-0 libwebkit2gtk-4.1-0 libsoup-3.0-0 \
+    && rm -rf /var/lib/apt/lists/* \
+    && wget -q "${PRUSA_APPIMAGE_URL}" -O prusa.AppImage \
+    && chmod +x prusa.AppImage \
+    && ./prusa.AppImage --appimage-extract \
+    && mv squashfs-root /prusa-slicer \
+    && rm prusa.AppImage
+
+ENV PRUSA_SLICER_PATH=/prusa-slicer/AppRun
+ENV PRUSA_SLICER_CONFIG=/prusa-slicer/usr/bin/resources/profiles/Creality.ini
+ENV LD_LIBRARY_PATH=/prusa-slicer/usr/lib
+
 EXPOSE 8080
 
 CMD ["air"]
