@@ -10,8 +10,8 @@ interface Props {
 export default function ConfirmationSection({ orderId, quote, filename, customerName }: Props) {
   const price = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: quote.currency,
-  }).format(quote.price)
+    currency: 'eur'
+  }).format(quote.price_eur)
 
   return (
     <section className="bg-gray-700 px-4 py-20 text-white">

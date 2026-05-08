@@ -1,18 +1,12 @@
 package quotes
 
 import (
-	"bufio"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strconv"
-	"strings"
 
-	"github.com/gitTanzj/server/config"
 	"github.com/gitTanzj/server/types"
 	"github.com/gitTanzj/server/utils"
 	"github.com/gorilla/mux"
@@ -66,26 +60,7 @@ func (h *Handler) postQuote(w http.ResponseWriter, r *http.Request) {
 	}
 	tmpInput.Close()
 
-	tmpGcode, err := os.CreateTemp("", "quote-*.gcode")
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, err)
-		return
-	}
-	tmpGcode.Close()
-	defer os.Remove(tmpGcode.Name())
-
-	args := []string{"--slice", "--output", tmpGcode.Name()}
-	if !strings.EqualFold(ext, ".3mf") {
-		args = append(args, "--load", config.Envs.PrusaSlicerConfig)
-	}
-	args = append(args, tmpInput.Name())
-
-	if out, err := exec.Command(config.Envs.PrusaSlicerPath, args...).CombinedOutput(); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("slicer failed: %w: %s", err, out))
-		return
-	}
-
-	grams, err := parseFilamentGrams(tmpGcode.Name())
+	grams, err := SliceFilament(tmpInput.Name(), ext)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
@@ -97,37 +72,7 @@ func (h *Handler) postQuote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	price := grams * filament.CostPerGram * 1.2
-	if price < 1.0 {
-		price = 1.0
-	}
-	price = math.Round(price*100) / 100
+	price := CalculateQuote(grams, filament.CostPerGram)
 
 	utils.WriteJSON(w, http.StatusOK, map[string]float64{"price_eur": price, "price_og": grams * filament.CostPerGram})
-}
-
-func parseFilamentGrams(gcodePath string) (float64, error) {
-	f, err := os.Open(gcodePath)
-	if err != nil {
-		return 0, err
-	}
-	defer f.Close()
-
-	const defaultDensity = 1.25
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, "; filament used [cm3] =") {
-			parts := strings.SplitN(line, "=", 2)
-			if len(parts) == 2 {
-				cm3, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
-				if err != nil {
-					return 0, err
-				}
-				return cm3 * defaultDensity, nil
-			}
-		}
-	}
-	return 0, fmt.Errorf("filament usage not found in gcode output")
 }

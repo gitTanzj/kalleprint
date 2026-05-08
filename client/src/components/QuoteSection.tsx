@@ -5,6 +5,7 @@ import type { Quote, OrderResponse } from '#/lib/api'
 
 interface Props {
   quote: Quote
+  file: File
   filename: string
   filamentId: string
   isRequoting?: boolean
@@ -14,7 +15,7 @@ interface Props {
   onConfirmed: (result: OrderResponse, customerName: string) => void
 }
 
-export default function QuoteSection({ quote, filename, filamentId, isRequoting, requoteError, onFilamentChange, onRequote, onConfirmed }: Props) {
+export default function QuoteSection({ quote, file, filename, filamentId, isRequoting, requoteError, onFilamentChange, onRequote, onConfirmed }: Props) {
   const { data: filaments = [], isLoading: filamentsLoading } = useFilaments()
   const placeOrder = usePlaceOrder()
 
@@ -32,8 +33,11 @@ export default function QuoteSection({ quote, filename, filamentId, isRequoting,
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const result = await placeOrder.mutateAsync({
+      file,
       filament_id: filamentId,
-      customer: { name, email, address },
+      name,
+      email,
+      shipping_address: address,
       notes,
     })
     onConfirmed(result, name)

@@ -82,6 +82,7 @@ function App() {
       {state.stage === 'quote' && (
         <QuoteSection
           quote={state.quote}
+          file={state.file}
           filename={state.file.name}
           filamentId={state.filamentId}
           isRequoting={getQuote.isPending}

@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/gitTanzj/server/services/admin"
 	"github.com/gitTanzj/server/services/filaments"
 	"github.com/gitTanzj/server/services/health"
 	"github.com/gitTanzj/server/services/jobs"
@@ -54,7 +55,7 @@ func (s *APIServer) Run() error {
 	filamentsHandler.RegisterRoutes(subrouter)
 
 	ordersRepository := orders.NewRepository(s.db)
-	ordersHandler := orders.NewHandler(ordersRepository)
+	ordersHandler := orders.NewHandler(ordersRepository, filamentsRepository)
 	ordersHandler.RegisterRoutes(subrouter)
 
 	printsRepository := prints.NewRepository(s.db)
@@ -63,6 +64,10 @@ func (s *APIServer) Run() error {
 
 	jobsHandler := jobs.NewHandler()
 	jobsHandler.RegisterRoutes(subrouter)
+
+	adminRepository := admin.NewRepository(s.db)
+	adminHandler := admin.NewHandler(adminRepository)
+	adminHandler.RegisterRoutes(subrouter)
 
 	log.Println("Listening on", s.addr)
 	return http.ListenAndServe(s.addr, corsMiddleware(router))

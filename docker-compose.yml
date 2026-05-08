@@ -23,6 +23,7 @@ services:
     restart: on-failure
     volumes:
       - ./server:/app
+      - /var/kalleprint:/var/kalleprint
     ports:
       - "8080:8080"
     environment:
@@ -30,6 +31,7 @@ services:
       DB_USER: root
       DB_PASSWORD: root
       DB_NAME: kalleprint
+      STORAGE_DIR: /var/kalleprint
     depends_on:
       db:
         condition: service_healthy
@@ -47,6 +49,19 @@ services:
       VITE_API_URL: http://127.0.0.1:8080
     depends_on:
       - api
-
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile.dev
+    restart: on-failure
+    volumes:
+      - ./admin:/app
+      - /app/node_modules
+    ports:
+      - "3001:3000"
+    environment:
+      VITE_API_URL: http://127.0.0.1:8080
+    depends_on:
+      - api
 volumes:
    db_data:

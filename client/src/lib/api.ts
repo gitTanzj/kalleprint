@@ -22,12 +22,11 @@ export interface Filament {
 }
 
 export interface OrderRequest {
+  file: File
   filament_id: string
-  customer: {
-    name: string
-    email: string
-    address: string
-  }
+  name: string
+  email: string
+  shipping_address: string
   notes: string
 }
 
@@ -49,7 +48,14 @@ export async function getFilaments(): Promise<Filament[]> {
 }
 
 export async function postOrder(req: OrderRequest): Promise<OrderResponse> {
-  const { data } = await client.post<OrderResponse>('/orders', req)
+  const form = new FormData()
+  form.append('printable', req.file)
+  form.append('filament_id', req.filament_id)
+  form.append('name', req.name)
+  form.append('email', req.email)
+  form.append('shipping_address', req.shipping_address)
+  form.append('notes', req.notes)
+  const { data } = await client.post<OrderResponse>('/orders', form)
   return data
 }
 
