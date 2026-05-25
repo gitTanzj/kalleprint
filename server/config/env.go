@@ -16,10 +16,13 @@ type Config struct {
 	DBAddress  string
 	DBName     string
 
-	UploadPath string
+	UploadPath  string
+	StoragePath string
 
 	PrusaSlicerPath   string
 	PrusaSlicerConfig string
+
+	PrinterAddress string
 }
 
 var Envs = initConfig()
@@ -36,10 +39,13 @@ func initConfig() Config {
 		DBAddress:  fmt.Sprintf("%s:%s", getEnv("DB_HOST", "127.0.0.1"), getEnv("DB_PORT", "3306")),
 		DBName:     getEnv("DB_NAME", "kalleprint"),
 
-		UploadPath: getEnv("UPLOAD_PATH", "/kalleprint/uploads/quotes"),
+		UploadPath:  getEnv("UPLOAD_PATH", "/kalleprint/uploads/quotes"),
+		StoragePath: getEnv("STORAGE_DIR", "/kalleprint/storage"),
 
 		PrusaSlicerPath:   getEnv("PRUSA_SLICER_PATH", "/prusa-slicer/AppRun"),
 		PrusaSlicerConfig: getEnv("PRUSA_SLICER_CONFIG", "/kalleprint/config/prusa-slicer.ini"),
+
+		PrinterAddress: getEnv("PRINTER_ADDRESS", "http://127.0.0.1"),
 	}
 }
 

@@ -43,9 +43,9 @@ npm run format             # prettier + eslint fix
 
 ```bash
 cd admin
-pnpm dev                   # Vite dev server on :3000
-pnpm build
-pnpm test
+npm dev                   # Vite dev server on :3000
+npm build
+npm test
 ```
 
 ## Architecture

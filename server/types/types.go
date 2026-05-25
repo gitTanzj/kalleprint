@@ -71,6 +71,8 @@ type Filament struct {
 	FilamentName  string  `json:"filament_name"`
 	CurrentAmount int     `json:"current_amount"`
 	CostPerGram   float64 `json:"cost_per_gram"`
+	ColorHex string `json:"color_hex"`
+	IniFilePath string `json:"ini_file_path"`
 }
 
 type OrderRepository interface {
@@ -81,6 +83,8 @@ type OrderRepository interface {
 type FilamentRepository interface {
 	GetFilaments() ([]*Filament, error)
 	GetFilamentByID(id string) (*Filament, error)
+	CreateFilament(id, name string, currentAmount int, costPerGram float64, colorHex, iniFilePath string) (*Filament, error)
+	DeleteFilament(id string) error
 }
 
 type PrintRepository interface {

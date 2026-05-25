@@ -14,9 +14,31 @@ interface FilamentForm {
   name: string
   amount_grams: string
   total_price: string
+  color_hex: string
+  filament_type: string
+  temperature: string
+  bed_temperature: string
+  first_layer_temperature: string
+  first_layer_bed_temperature: string
+  filament_diameter: string
+  extrusion_multiplier: string
+  filament_density: string
 }
 
-const emptyForm: FilamentForm = { name: '', amount_grams: '', total_price: '' }
+const emptyForm: FilamentForm = {
+  name: '',
+  amount_grams: '',
+  total_price: '',
+  color_hex: '#ffffff',
+  filament_type: 'PLA',
+  temperature: '',
+  bed_temperature: '',
+  first_layer_temperature: '',
+  first_layer_bed_temperature: '',
+  filament_diameter: '',
+  extrusion_multiplier: '',
+  filament_density: '',
+}
 
 function costPerGram(f: FilamentForm): string {
   const a = parseFloat(f.amount_grams)
@@ -45,9 +67,11 @@ function FilamentsPage() {
     setEditId(f.id)
     const totalPrice = (f.cost_per_gram * f.current_amount).toFixed(2)
     setEditForm({
+      ...emptyForm,
       name: f.filament_name,
       amount_grams: String(f.current_amount),
       total_price: totalPrice,
+      color_hex: f.color_hex.startsWith('#') ? f.color_hex : `#${f.color_hex}`,
     })
   }
 
@@ -59,6 +83,15 @@ function FilamentsPage() {
         name: addForm.name,
         amount_grams: parseInt(addForm.amount_grams),
         total_price: parseFloat(addForm.total_price),
+        color_hex: addForm.color_hex.replace(/^#/, ''),
+        filament_type: addForm.filament_type,
+        temperature: addForm.temperature,
+        bed_temperature: addForm.bed_temperature,
+        first_layer_temperature: addForm.first_layer_temperature,
+        first_layer_bed_temperature: addForm.first_layer_bed_temperature,
+        filament_diameter: addForm.filament_diameter,
+        extrusion_multiplier: addForm.extrusion_multiplier,
+        filament_density: addForm.filament_density,
       },
       { onSuccess: () => setAddForm(null) },
     )
@@ -102,6 +135,7 @@ function FilamentsPage() {
       <table className="w-full border-2 border-black text-left">
         <thead className="border-b-2 border-black bg-gray-100">
           <tr>
+            <th className="px-4 py-2 font-semibold">Color</th>
             <th className="px-4 py-2 font-semibold">Name</th>
             <th className="px-4 py-2 font-semibold">Stock (g)</th>
             <th className="px-4 py-2 font-semibold">Cost/g</th>
@@ -112,7 +146,7 @@ function FilamentsPage() {
           {filaments?.map((f) =>
             editId === f.id ? (
               <tr key={f.id} className="border-b border-black">
-                <td colSpan={4} className="px-4 py-3">
+                <td colSpan={5} className="px-4 py-3">
                   <form onSubmit={handleEdit} className="flex items-end gap-3">
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-semibold">Name</label>
@@ -177,6 +211,17 @@ function FilamentsPage() {
               </tr>
             ) : (
               <tr key={f.id} className="border-b border-black last:border-b-0">
+                <td className="px-4 py-2">
+                  <span
+                    className="inline-block h-6 w-6 border-2 border-black align-middle"
+                    style={{
+                      backgroundColor: f.color_hex.startsWith('#')
+                        ? f.color_hex
+                        : `#${f.color_hex}`,
+                    }}
+                    title={f.color_hex}
+                  />
+                </td>
                 <td className="px-4 py-2">{f.filament_name}</td>
                 <td className="px-4 py-2">{f.current_amount}</td>
                 <td className="px-4 py-2">€{f.cost_per_gram.toFixed(4)}</td>
@@ -201,7 +246,7 @@ function FilamentsPage() {
           )}
           {filaments?.length === 0 && (
             <tr>
-              <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+              <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
                 No filaments
               </td>
             </tr>
@@ -212,63 +257,200 @@ function FilamentsPage() {
       {addForm !== null && (
         <div className="mt-6 border-2 border-black p-6">
           <h2 className="mb-4 font-bold">Add Filament</h2>
-          <form onSubmit={handleAdd} className="flex items-end gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold">Name</label>
-              <input
-                value={addForm.name}
-                onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-                required
-                className="border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-              />
+          <form onSubmit={handleAdd} className="flex flex-col gap-6">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold">Name</label>
+                <input
+                  value={addForm.name}
+                  onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                  required
+                  className="border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold">Stock (g)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={addForm.amount_grams}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, amount_grams: e.target.value })
+                  }
+                  required
+                  className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold">Spool Price (€)</label>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={addForm.total_price}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, total_price: e.target.value })
+                  }
+                  required
+                  className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold">Cost/g</label>
+                <span className="border-2 border-black bg-gray-100 px-3 py-1.5 text-sm">
+                  €{costPerGram(addForm)}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold">Color</label>
+                <input
+                  type="color"
+                  value={addForm.color_hex}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, color_hex: e.target.value })
+                  }
+                  required
+                  className="h-[38px] w-16 border-2 border-black bg-white p-0"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold">Filament Type</label>
+                <input
+                  value={addForm.filament_type}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, filament_type: e.target.value })
+                  }
+                  required
+                  placeholder="PLA"
+                  className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
+                />
+              </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold">Stock (g)</label>
-              <input
-                type="number"
-                min="1"
-                value={addForm.amount_grams}
-                onChange={(e) =>
-                  setAddForm({ ...addForm, amount_grams: e.target.value })
-                }
-                required
-                className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-              />
+
+            <fieldset className="flex flex-col gap-3 border-2 border-black p-4">
+              <legend className="px-2 text-xs font-semibold">
+                Slicer profile (optional, defaults shown)
+              </legend>
+              <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold">Nozzle Temp (°C)</label>
+                  <input
+                    type="number"
+                    value={addForm.temperature}
+                    onChange={(e) =>
+                      setAddForm({ ...addForm, temperature: e.target.value })
+                    }
+                    placeholder="220"
+                    className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold">Bed Temp (°C)</label>
+                  <input
+                    type="number"
+                    value={addForm.bed_temperature}
+                    onChange={(e) =>
+                      setAddForm({ ...addForm, bed_temperature: e.target.value })
+                    }
+                    placeholder="60"
+                    className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold">
+                    First Layer Nozzle (°C)
+                  </label>
+                  <input
+                    type="number"
+                    value={addForm.first_layer_temperature}
+                    onChange={(e) =>
+                      setAddForm({
+                        ...addForm,
+                        first_layer_temperature: e.target.value,
+                      })
+                    }
+                    placeholder="225"
+                    className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold">
+                    First Layer Bed (°C)
+                  </label>
+                  <input
+                    type="number"
+                    value={addForm.first_layer_bed_temperature}
+                    onChange={(e) =>
+                      setAddForm({
+                        ...addForm,
+                        first_layer_bed_temperature: e.target.value,
+                      })
+                    }
+                    placeholder="65"
+                    className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold">Diameter (mm)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={addForm.filament_diameter}
+                    onChange={(e) =>
+                      setAddForm({ ...addForm, filament_diameter: e.target.value })
+                    }
+                    placeholder="1.75"
+                    className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold">Extrusion Mult.</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={addForm.extrusion_multiplier}
+                    onChange={(e) =>
+                      setAddForm({
+                        ...addForm,
+                        extrusion_multiplier: e.target.value,
+                      })
+                    }
+                    placeholder="1"
+                    className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold">Density (g/cm³)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={addForm.filament_density}
+                    onChange={(e) =>
+                      setAddForm({ ...addForm, filament_density: e.target.value })
+                    }
+                    placeholder="1.24"
+                    className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </fieldset>
+
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={create.isPending}
+                className="hover-black border-2 border-black bg-white px-4 py-1.5 font-semibold disabled:opacity-50"
+              >
+                Add
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddForm(null)}
+                className="border-2 border-black bg-white px-4 py-1.5 font-semibold hover:bg-gray-100"
+              >
+                Cancel
+              </button>
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold">Spool Price (€)</label>
-              <input
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={addForm.total_price}
-                onChange={(e) =>
-                  setAddForm({ ...addForm, total_price: e.target.value })
-                }
-                required
-                className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold">Cost/g</label>
-              <span className="border-2 border-black bg-gray-100 px-3 py-1.5 text-sm">
-                €{costPerGram(addForm)}
-              </span>
-            </div>
-            <button
-              type="submit"
-              disabled={create.isPending}
-              className="hover-black border-2 border-black bg-white px-4 py-1.5 font-semibold disabled:opacity-50"
-            >
-              Add
-            </button>
-            <button
-              type="button"
-              onClick={() => setAddForm(null)}
-              className="border-2 border-black bg-white px-4 py-1.5 font-semibold hover:bg-gray-100"
-            >
-              Cancel
-            </button>
           </form>
         </div>
       )}

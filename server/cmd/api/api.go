@@ -48,7 +48,7 @@ func (s *APIServer) Run() error {
 	healthHandler.RegisterRoutes(subrouter)
 
 	filamentsRepository := filaments.NewRepository(s.db)
-	filamentsHandler := filaments.NewHandler(filamentsRepository)
+	filamentsHandler := filaments.NewHandler(filamentsRepository, s.db)
 
 	quotesHandler := quotes.NewHandler(filamentsRepository)
 	quotesHandler.RegisterRoutes(subrouter)

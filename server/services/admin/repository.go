@@ -89,7 +89,7 @@ func (r *Repository) UpdateOrderStatus(id, status string) error {
 
 func (r *Repository) GetFilaments() ([]*types.Filament, error) {
 	rows, err := r.db.Query(
-		"SELECT BIN_TO_UUID(id), filament_name, current_amount, cost_per_gram FROM filaments",
+		"SELECT BIN_TO_UUID(id), filament_name, current_amount, cost_per_gram, color_hex, ini_file_path FROM filaments",
 	)
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (r *Repository) GetFilaments() ([]*types.Filament, error) {
 	filaments := make([]*types.Filament, 0)
 	for rows.Next() {
 		f := new(types.Filament)
-		if err := rows.Scan(&f.Id, &f.FilamentName, &f.CurrentAmount, &f.CostPerGram); err != nil {
+		if err := rows.Scan(&f.Id, &f.FilamentName, &f.CurrentAmount, &f.CostPerGram, &f.ColorHex, &f.IniFilePath); err != nil {
 			return nil, err
 		}
 		filaments = append(filaments, f)
@@ -120,11 +120,11 @@ func (r *Repository) CreateFilament(name string, amountGrams int, costPerGram fl
 		return nil, err
 	}
 	row := r.db.QueryRow(
-		"SELECT BIN_TO_UUID(id), filament_name, current_amount, cost_per_gram FROM filaments WHERE id = UUID_TO_BIN(?)",
+		"SELECT BIN_TO_UUID(id), filament_name, current_amount, cost_per_gram, color_hex, ini_file_path FROM filaments WHERE id = UUID_TO_BIN(?)",
 		newID,
 	)
 	f := new(types.Filament)
-	if err := row.Scan(&f.Id, &f.FilamentName, &f.CurrentAmount, &f.CostPerGram); err != nil {
+	if err := row.Scan(&f.Id, &f.FilamentName, &f.CurrentAmount, &f.CostPerGram, &f.ColorHex, &f.IniFilePath); err != nil {
 		return nil, err
 	}
 	return f, nil
@@ -143,11 +143,11 @@ func (r *Repository) UpdateFilament(id, name string, amountGrams int, costPerGra
 		return nil, fmt.Errorf("filament not found")
 	}
 	row := r.db.QueryRow(
-		"SELECT BIN_TO_UUID(id), filament_name, current_amount, cost_per_gram FROM filaments WHERE id = UUID_TO_BIN(?)",
+		"SELECT BIN_TO_UUID(id), filament_name, current_amount, cost_per_gram, color_hex, ini_file_path FROM filaments WHERE id = UUID_TO_BIN(?)",
 		id,
 	)
 	f := new(types.Filament)
-	if err := row.Scan(&f.Id, &f.FilamentName, &f.CurrentAmount, &f.CostPerGram); err != nil {
+	if err := row.Scan(&f.Id, &f.FilamentName, &f.CurrentAmount, &f.CostPerGram, &f.ColorHex, &f.IniFilePath); err != nil {
 		return nil, err
 	}
 	return f, nil

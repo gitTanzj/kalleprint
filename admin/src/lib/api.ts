@@ -56,6 +56,23 @@ export interface Filament {
   filament_name: string
   current_amount: number
   cost_per_gram: number
+  color_hex: string
+  ini_file_path: string
+}
+
+export interface CreateFilamentInput {
+  name: string
+  amount_grams: number
+  total_price: number
+  color_hex: string
+  filament_type: string
+  temperature?: string
+  bed_temperature?: string
+  first_layer_temperature?: string
+  first_layer_bed_temperature?: string
+  filament_diameter?: string
+  extrusion_multiplier?: string
+  filament_density?: string
 }
 
 export interface DashboardStats {
@@ -104,12 +121,30 @@ export async function fetchFilaments() {
   return res.data
 }
 
-export async function createFilament(data: {
-  name: string
-  amount_grams: number
-  total_price: number
-}) {
-  const res = await api.post<Filament>('/filaments', data)
+export async function createFilament(data: CreateFilamentInput) {
+  const fd = new FormData()
+  fd.append('filament_name', data.name)
+  fd.append('filament_stock', String(data.amount_grams))
+  fd.append('filament_cost_per_gram', String(data.total_price / data.amount_grams))
+  fd.append('filament_color_hex', data.color_hex)
+  fd.append('filament_type', data.filament_type)
+  fd.append('filament_cost', String(data.total_price))
+
+  const optional: Array<[keyof CreateFilamentInput, string]> = [
+    ['temperature', 'temperature'],
+    ['bed_temperature', 'bed_temperature'],
+    ['first_layer_temperature', 'first_layer_temperature'],
+    ['first_layer_bed_temperature', 'first_layer_bed_temperature'],
+    ['filament_diameter', 'filament_diameter'],
+    ['extrusion_multiplier', 'extrusion_multiplier'],
+    ['filament_density', 'filament_density'],
+  ]
+  for (const [key, field] of optional) {
+    const v = data[key]
+    if (typeof v === 'string' && v !== '') fd.append(field, v)
+  }
+
+  const res = await api.post<Filament>(`${BASE_URL}/api/v1/filaments`, fd)
   return res.data
 }
 
@@ -122,5 +157,5 @@ export async function updateFilament(
 }
 
 export async function deleteFilament(id: string) {
-  await api.delete(`/filaments/${id}`)
+  await api.delete(`${BASE_URL}/api/v1/filaments/${id}`)
 }
