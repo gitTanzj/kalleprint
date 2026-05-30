@@ -25,6 +25,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
   beforeLoad: ({ location }) => {
+    if (typeof window === 'undefined') return
     const isLoginPage = location.pathname === '/login'
     if (!isLoginPage && !isTokenValid()) {
       throw redirect({ to: '/login' })

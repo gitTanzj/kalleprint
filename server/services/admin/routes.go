@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gitTanzj/server/services/filamentconfig"
 	"github.com/gitTanzj/server/types"
 	"github.com/gitTanzj/server/utils"
 	"github.com/golang-jwt/jwt/v5"
@@ -129,6 +130,9 @@ func (h *Handler) getFilaments(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
+	}
+	for _, f := range filaments {
+		filamentconfig.EnrichFilament(f)
 	}
 	utils.WriteJSON(w, http.StatusOK, filaments)
 }

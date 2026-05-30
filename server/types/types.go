@@ -71,8 +71,19 @@ type Filament struct {
 	FilamentName  string  `json:"filament_name"`
 	CurrentAmount int     `json:"current_amount"`
 	CostPerGram   float64 `json:"cost_per_gram"`
-	ColorHex string `json:"color_hex"`
-	IniFilePath string `json:"ini_file_path"`
+	ColorHex      string  `json:"color_hex"`
+	IniFilePath   string  `json:"ini_file_path"`
+
+	// Slicer config — populated from the ini file, not stored in the DB.
+	FilamentType              string `json:"filament_type"`
+	Temperature               string `json:"temperature"`
+	BedTemperature            string `json:"bed_temperature"`
+	FirstLayerTemperature     string `json:"first_layer_temperature"`
+	FirstLayerBedTemperature  string `json:"first_layer_bed_temperature"`
+	FilamentDiameter          string `json:"filament_diameter"`
+	ExtrusionMultiplier       string `json:"extrusion_multiplier"`
+	FilamentDensity           string `json:"filament_density"`
+	FilamentCost              string `json:"filament_cost"`
 }
 
 type OrderRepository interface {
@@ -84,6 +95,7 @@ type FilamentRepository interface {
 	GetFilaments() ([]*Filament, error)
 	GetFilamentByID(id string) (*Filament, error)
 	CreateFilament(id, name string, currentAmount int, costPerGram float64, colorHex, iniFilePath string) (*Filament, error)
+	UpdateFilament(id string, name *string, currentAmount *int, costPerGram *float64, colorHex *string, iniFilePath *string) error
 	DeleteFilament(id string) error
 }
 

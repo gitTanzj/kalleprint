@@ -58,6 +58,15 @@ export interface Filament {
   cost_per_gram: number
   color_hex: string
   ini_file_path: string
+  filament_type: string
+  temperature: string
+  bed_temperature: string
+  first_layer_temperature: string
+  first_layer_bed_temperature: string
+  filament_diameter: string
+  extrusion_multiplier: string
+  filament_density: string
+  filament_cost: string
 }
 
 export interface CreateFilamentInput {
@@ -148,11 +157,46 @@ export async function createFilament(data: CreateFilamentInput) {
   return res.data
 }
 
-export async function updateFilament(
-  id: string,
-  data: { name: string; amount_grams: number; total_price: number },
-) {
-  const res = await api.put<Filament>(`/filaments/${id}`, data)
+export interface UpdateFilamentInput {
+  name?: string
+  amount_grams?: number
+  total_price?: number
+  color_hex?: string
+  filament_type?: string
+  temperature?: string
+  bed_temperature?: string
+  first_layer_temperature?: string
+  first_layer_bed_temperature?: string
+  filament_diameter?: string
+  extrusion_multiplier?: string
+  filament_density?: string
+}
+
+export async function updateFilament(id: string, data: UpdateFilamentInput) {
+  const fd = new FormData()
+  if (data.name) fd.append('filament_name', data.name)
+  if (data.amount_grams != null) fd.append('filament_stock', String(data.amount_grams))
+  if (data.amount_grams != null && data.total_price != null)
+    fd.append('filament_cost_per_gram', String(data.total_price / data.amount_grams))
+  if (data.total_price != null) fd.append('filament_cost', String(data.total_price))
+  if (data.color_hex) fd.append('filament_color_hex', data.color_hex)
+
+  const iniFields: Array<[keyof UpdateFilamentInput, string]> = [
+    ['filament_type', 'filament_type'],
+    ['temperature', 'temperature'],
+    ['bed_temperature', 'bed_temperature'],
+    ['first_layer_temperature', 'first_layer_temperature'],
+    ['first_layer_bed_temperature', 'first_layer_bed_temperature'],
+    ['filament_diameter', 'filament_diameter'],
+    ['extrusion_multiplier', 'extrusion_multiplier'],
+    ['filament_density', 'filament_density'],
+  ]
+  for (const [key, field] of iniFields) {
+    const v = data[key]
+    if (typeof v === 'string' && v !== '') fd.append(field, v)
+  }
+
+  const res = await api.patch<Filament>(`${BASE_URL}/api/v1/filaments/${id}`, fd)
   return res.data
 }
 

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  type UpdateFilamentInput,
   createFilament,
   deleteFilament,
   fetchDashboard,
@@ -53,10 +54,7 @@ export function useCreateFilament() {
 export function useUpdateFilament() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({
-      id,
-      ...data
-    }: { id: string; name: string; amount_grams: number; total_price: number }) =>
+    mutationFn: ({ id, ...data }: { id: string } & UpdateFilamentInput) =>
       updateFilament(id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['filaments'] }),
   })

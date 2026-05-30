@@ -3,6 +3,7 @@ package filaments
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/gitTanzj/server/types"
 )
@@ -60,6 +61,41 @@ func (r *Repository) CreateFilament(id, name string, currentAmount int, costPerG
 	}
 
 	return r.GetFilamentByID(id)
+}
+
+func (r *Repository) UpdateFilament(id string, name *string, currentAmount *int, costPerGram *float64, colorHex *string, iniFilePath *string) error {
+	var setClauses []string
+	var args []any
+
+	if name != nil {
+		setClauses = append(setClauses, "filament_name = ?")
+		args = append(args, *name)
+	}
+	if currentAmount != nil {
+		setClauses = append(setClauses, "current_amount = ?")
+		args = append(args, *currentAmount)
+	}
+	if costPerGram != nil {
+		setClauses = append(setClauses, "cost_per_gram = ?")
+		args = append(args, *costPerGram)
+	}
+	if colorHex != nil {
+		setClauses = append(setClauses, "color_hex = ?")
+		args = append(args, *colorHex)
+	}
+	if iniFilePath != nil {
+		setClauses = append(setClauses, "ini_file_path = ?")
+		args = append(args, *iniFilePath)
+	}
+
+	if len(setClauses) == 0 {
+		return nil
+	}
+
+	args = append(args, id)
+	q := "UPDATE filaments SET " + strings.Join(setClauses, ", ") + " WHERE id = UUID_TO_BIN(?)"
+	_, err := r.db.Exec(q, args...)
+	return err
 }
 
 func (r *Repository) DeleteFilament(id string) error {
