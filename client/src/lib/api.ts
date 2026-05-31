@@ -18,7 +18,8 @@ export interface Filament {
   id: string
   filament_name: string
   current_amount: number
-  cost_per_gram: number
+  color_hex: string
+  filament_type: string
 }
 
 export interface OrderRequest {

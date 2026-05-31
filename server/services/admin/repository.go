@@ -107,75 +107,18 @@ func (r *Repository) GetFilaments() ([]*types.Filament, error) {
 	return filaments, nil
 }
 
-func (r *Repository) CreateFilament(name string, amountGrams int, costPerGram float64) (*types.Filament, error) {
-	var newID string
-	if err := r.db.QueryRow("SELECT UUID()").Scan(&newID); err != nil {
-		return nil, err
-	}
-	_, err := r.db.Exec(
-		"INSERT INTO filaments (id, filament_name, current_amount, cost_per_gram) VALUES (UUID_TO_BIN(?), ?, ?, ?)",
-		newID, name, amountGrams, costPerGram,
-	)
-	if err != nil {
-		return nil, err
-	}
-	row := r.db.QueryRow(
-		"SELECT BIN_TO_UUID(id), filament_name, current_amount, cost_per_gram, color_hex, ini_file_path FROM filaments WHERE id = UUID_TO_BIN(?)",
-		newID,
-	)
-	f := new(types.Filament)
-	if err := row.Scan(&f.Id, &f.FilamentName, &f.CurrentAmount, &f.CostPerGram, &f.ColorHex, &f.IniFilePath); err != nil {
-		return nil, err
-	}
-	return f, nil
-}
-
-func (r *Repository) UpdateFilament(id, name string, amountGrams int, costPerGram float64) (*types.Filament, error) {
-	res, err := r.db.Exec(
-		"UPDATE filaments SET filament_name = ?, current_amount = ?, cost_per_gram = ? WHERE id = UUID_TO_BIN(?)",
-		name, amountGrams, costPerGram, id,
-	)
-	if err != nil {
-		return nil, err
-	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return nil, fmt.Errorf("filament not found")
-	}
-	row := r.db.QueryRow(
-		"SELECT BIN_TO_UUID(id), filament_name, current_amount, cost_per_gram, color_hex, ini_file_path FROM filaments WHERE id = UUID_TO_BIN(?)",
-		id,
-	)
-	f := new(types.Filament)
-	if err := row.Scan(&f.Id, &f.FilamentName, &f.CurrentAmount, &f.CostPerGram, &f.ColorHex, &f.IniFilePath); err != nil {
-		return nil, err
-	}
-	return f, nil
-}
-
-func (r *Repository) DeleteFilament(id string) error {
-	res, err := r.db.Exec("DELETE FROM filaments WHERE id = UUID_TO_BIN(?)", id)
-	if err != nil {
-		return err
-	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return fmt.Errorf("filament not found")
-	}
-	return nil
-}
-
 func (r *Repository) GetDashboardStats() (*types.DashboardStats, error) {
 	row := r.db.QueryRow(`
 		SELECT
 			COUNT(*) AS total_orders,
 			SUM(status = 'pending') AS pending,
 			SUM(status IN ('printing', 'waiting-for-shipment')) AS in_progress,
-			COALESCE(SUM(total), 0) AS total_revenue
+			COALESCE(SUM(total), 0) AS total_revenue,
+			COALESCE(SUM(CASE WHEN status = 'done' THEN total ELSE 0 END), 0) AS realized_revenue
 		FROM orders
 	`)
 	s := new(types.DashboardStats)
-	if err := row.Scan(&s.TotalOrders, &s.Pending, &s.InProgress, &s.TotalRevenue); err != nil {
+	if err := row.Scan(&s.TotalOrders, &s.Pending, &s.InProgress, &s.TotalRevenue, &s.RealizedRevenue); err != nil {
 		return nil, err
 	}
 	return s, nil

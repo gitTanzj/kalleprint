@@ -1,12 +1,16 @@
 package admin
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/gitTanzj/server/config"
 	"github.com/gitTanzj/server/services/filamentconfig"
 	"github.com/gitTanzj/server/types"
 	"github.com/gitTanzj/server/utils"
@@ -16,11 +20,14 @@ import (
 )
 
 type Handler struct {
-	repo types.AdminRepository
+	repo         types.AdminRepository
+	filamentRepo types.FilamentRepository
+	jobRepo      types.JobRepository
+	db           *sql.DB
 }
 
-func NewHandler(repo types.AdminRepository) *Handler {
-	return &Handler{repo: repo}
+func NewHandler(repo types.AdminRepository, filamentRepo types.FilamentRepository, jobRepo types.JobRepository, db *sql.DB) *Handler {
+	return &Handler{repo: repo, filamentRepo: filamentRepo, jobRepo: jobRepo, db: db}
 }
 
 func (h *Handler) RegisterRoutes(router *mux.Router) {
@@ -30,12 +37,16 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	admin.Use(h.jwtMiddleware)
 
 	admin.HandleFunc("/orders", h.getOrders).Methods("GET")
+	admin.HandleFunc("/orders/{id}", h.getOrder).Methods("GET")
 	admin.HandleFunc("/orders/{id}/status", h.updateOrderStatus).Methods("PATCH")
 	admin.HandleFunc("/filaments", h.getFilaments).Methods("GET")
 	admin.HandleFunc("/filaments", h.createFilament).Methods("POST")
 	admin.HandleFunc("/filaments/{id}", h.updateFilament).Methods("PUT")
 	admin.HandleFunc("/filaments/{id}", h.deleteFilament).Methods("DELETE")
 	admin.HandleFunc("/dashboard", h.getDashboard).Methods("GET")
+
+	admin.HandleFunc("/jobs", h.getJobs).Methods("GET")
+	admin.HandleFunc("/jobs/{id}/status", h.updateJobStatus).Methods("PATCH")
 }
 
 func (h *Handler) jwtMiddleware(next http.Handler) http.Handler {
@@ -109,6 +120,16 @@ func (h *Handler) getOrders(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, orders)
 }
 
+func (h *Handler) getOrder(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	order, err := h.repo.GetOrderByID(id)
+	if err != nil {
+		utils.WriteError(w, http.StatusNotFound, fmt.Errorf("order not found"))
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, order)
+}
+
 func (h *Handler) updateOrderStatus(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 	var payload struct {
@@ -138,47 +159,200 @@ func (h *Handler) getFilaments(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) createFilament(w http.ResponseWriter, r *http.Request) {
-	var payload types.CreateFilamentPayload
-	if err := utils.ParseRequestBodyAsJSON(r, &payload); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, 25<<20)
+
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
-	if payload.AmountGrams <= 0 || payload.TotalPrice <= 0 || payload.Name == "" {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("name, amount_grams, and total_price are required"))
+	defer r.MultipartForm.RemoveAll()
+
+	filamentName := r.FormValue("filament_name")
+	filamentStock := r.FormValue("filament_stock")
+	filamentCostPerGram := r.FormValue("filament_cost_per_gram")
+	filamentColorHex := r.FormValue("filament_color_hex")
+	filamentType := r.FormValue("filament_type")
+	filamentCost := r.FormValue("filament_cost")
+
+	if filamentName == "" || filamentStock == "" || filamentCostPerGram == "" ||
+		filamentColorHex == "" || filamentType == "" || filamentCost == "" {
+		utils.WriteError(
+			w,
+			http.StatusBadRequest,
+			fmt.Errorf("filament_name, filament_stock, filament_cost_per_gram, filament_color_hex, filament_type and filament_cost are required"),
+		)
 		return
 	}
-	costPerGram := payload.TotalPrice / float64(payload.AmountGrams)
-	f, err := h.repo.CreateFilament(payload.Name, payload.AmountGrams, costPerGram)
+
+	stock, err := strconv.Atoi(filamentStock)
 	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("filament_stock must be an integer"))
+		return
+	}
+
+	costPerGram, err := strconv.ParseFloat(filamentCostPerGram, 64)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("filament_cost_per_gram must be a number"))
+		return
+	}
+
+	if _, err := strconv.ParseFloat(filamentCost, 64); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("filament_cost must be a number"))
+		return
+	}
+
+	overrides := map[string]string{
+		"filament_type": filamentType,
+		"filament_cost": filamentCost,
+	}
+	for _, k := range filamentconfig.Keys {
+		if v := r.FormValue(k); v != "" {
+			overrides[k] = v
+		}
+	}
+	iniParams := filamentconfig.MergeParams(filamentconfig.Defaults, overrides)
+
+	var newID string
+	if err := h.db.QueryRow("SELECT UUID()").Scan(&newID); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
-	utils.WriteJSON(w, http.StatusCreated, f)
+
+	iniDir := filepath.Join(config.Envs.StoragePath, "filaments")
+	if err := os.MkdirAll(iniDir, 0o755); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	iniPath := filepath.Join(iniDir, newID+".ini")
+	if err := filamentconfig.WriteFile(iniPath, iniParams); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	createdFilament, err := h.filamentRepo.CreateFilament(newID, filamentName, stock, costPerGram, filamentColorHex, iniPath)
+	if err != nil {
+		os.Remove(iniPath)
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusCreated, createdFilament)
 }
 
 func (h *Handler) updateFilament(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
-	var payload types.CreateFilamentPayload
-	if err := utils.ParseRequestBodyAsJSON(r, &payload); err != nil {
+
+	existing, err := h.filamentRepo.GetFilamentByID(id)
+	if err != nil {
+		utils.WriteError(w, http.StatusNotFound, err)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 25<<20)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
-	costPerGram := payload.TotalPrice / float64(payload.AmountGrams)
-	f, err := h.repo.UpdateFilament(id, payload.Name, payload.AmountGrams, costPerGram)
+	defer r.MultipartForm.RemoveAll()
+
+	var name *string
+	var currentAmount *int
+	var costPerGram *float64
+	var colorHex *string
+
+	if v := r.FormValue("filament_name"); v != "" {
+		name = &v
+	}
+	if v := r.FormValue("filament_stock"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("filament_stock must be an integer"))
+			return
+		}
+		currentAmount = &n
+	}
+	if v := r.FormValue("filament_cost_per_gram"); v != "" {
+		cpg, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("filament_cost_per_gram must be a number"))
+			return
+		}
+		costPerGram = &cpg
+	}
+	if v := r.FormValue("filament_color_hex"); v != "" {
+		colorHex = &v
+	}
+
+	overrides := make(map[string]string)
+	for _, k := range filamentconfig.Keys {
+		if v := r.FormValue(k); v != "" {
+			overrides[k] = v
+		}
+	}
+
+	if len(overrides) > 0 {
+		base := filamentconfig.Defaults
+		if existing.IniFilePath != "" {
+			if parsed, err := filamentconfig.ParseIniFile(existing.IniFilePath); err == nil {
+				base = parsed
+			}
+		}
+		iniParams := filamentconfig.MergeParams(base, overrides)
+
+		iniPath := existing.IniFilePath
+		if iniPath == "" {
+			iniDir := filepath.Join(config.Envs.StoragePath, "filaments")
+			if err := os.MkdirAll(iniDir, 0o755); err != nil {
+				utils.WriteError(w, http.StatusInternalServerError, err)
+				return
+			}
+			iniPath = filepath.Join(iniDir, id+".ini")
+		}
+
+		if err := filamentconfig.WriteFile(iniPath, iniParams); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	if err := h.filamentRepo.UpdateFilament(id, name, currentAmount, costPerGram, colorHex, nil); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	updated, err := h.filamentRepo.GetFilamentByID(id)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, f)
+	filamentconfig.EnrichFilament(updated)
+
+	utils.WriteJSON(w, http.StatusOK, updated)
 }
 
 func (h *Handler) deleteFilament(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
-	if err := h.repo.DeleteFilament(id); err != nil {
+
+	filament, err := h.filamentRepo.GetFilamentByID(id)
+	if err != nil {
+		utils.WriteError(w, http.StatusNotFound, err)
+		return
+	}
+
+	if err := h.filamentRepo.DeleteFilament(id); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, map[string]string{"deleted": id})
+
+	if filament.IniFilePath != "" {
+		if err := os.Remove(filament.IniFilePath); err != nil && !os.IsNotExist(err) {
+			utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("filament row deleted but ini file removal failed: %w", err))
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) getDashboard(w http.ResponseWriter, r *http.Request) {
@@ -188,4 +362,39 @@ func (h *Handler) getDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.WriteJSON(w, http.StatusOK, stats)
+}
+
+func (h *Handler) getJobs(w http.ResponseWriter, r *http.Request) {
+	status := r.URL.Query().Get("status")
+	jobs, err := h.jobRepo.GetJobs()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+	if status != "" {
+		filtered := jobs[:0]
+		for _, j := range jobs {
+			if j.Status == status {
+				filtered = append(filtered, j)
+			}
+		}
+		jobs = filtered
+	}
+	utils.WriteJSON(w, http.StatusOK, jobs)
+}
+
+func (h *Handler) updateJobStatus(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	var payload struct {
+		Status string `json:"status"`
+	}
+	if err := utils.ParseRequestBodyAsJSON(r, &payload); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+	if err := h.jobRepo.UpdateJobStatus(id, payload.Status); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, map[string]string{"status": payload.Status})
 }

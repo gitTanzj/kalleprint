@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { useFilaments } from '#/lib/queries'
+import type { Filament } from '#/lib/api'
 
 const MAX_BYTES = 25 * 1024 * 1024
 const ACCEPTED = ['.stl', '.3mf']
@@ -15,8 +16,11 @@ export default function UploadSection({ onSubmit, loading, error }: Props) {
   const [fileError, setFileError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
   const [filamentId, setFilamentId] = useState('')
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [hoveredFilament, setHoveredFilament] = useState<Filament | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const { data: filaments = [], isLoading: filamentsLoading } = useFilaments()
 
@@ -54,6 +58,24 @@ export default function UploadSection({ onSubmit, loading, error }: Props) {
   }
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
+
+  useEffect(() => {
+    if (!dropdownOpen) return
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [dropdownOpen])
+
+  const selectedFilament = filaments.find((f) => f.id === filamentId);
+
+  function selectFilament(id: string) {
+    setFilamentId(id)
+    setDropdownOpen(false)
+  }
 
   const canSubmit = !!file && !!filamentId && !loading
 
@@ -98,25 +120,72 @@ export default function UploadSection({ onSubmit, loading, error }: Props) {
 
         {fileError && <p className="mt-3 text-sm text-red-600">{fileError}</p>}
 
-        <label className="mt-6 flex flex-col gap-1.5 text-sm font-semibold">
+        <div className="mt-6 flex flex-col gap-1.5 text-sm font-semibold">
           Filament
-          <select
-            required
-            value={filamentId}
-            onChange={(e) => setFilamentId(e.target.value)}
-            disabled={filamentsLoading}
-            className="border-2 border-black bg-white px-3 py-2 font-normal text-black focus:outline-none disabled:opacity-50"
-          >
-            <option value="" disabled>
-              {filamentsLoading ? 'Loading…' : 'Select a filament'}
-            </option>
-            {filaments.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.filament_name}
-              </option>
-            ))}
-          </select>
-        </label>
+          <div ref={dropdownRef} className="relative">
+            <button
+              type="button"
+              onClick={() => !filamentsLoading && setDropdownOpen((o) => !o)}
+              disabled={filamentsLoading}
+              className="flex w-full items-center gap-2.5 border-2 border-black bg-white px-3 py-2 text-left font-normal text-black focus:outline-none disabled:opacity-50"
+            >
+              {selectedFilament ? (
+                <>
+                  <span
+                    className="inline-block h-4 w-4 shrink-0 rounded-full border border-black/20"
+                    style={{ backgroundColor: `#${selectedFilament.color_hex}` }}
+                  />
+                  <span className="flex-1">{selectedFilament.filament_name}</span>
+                </>
+              ) : (
+                <span className="flex-1 text-gray-400">
+                  {filamentsLoading ? 'Loading…' : 'Select a filament'}
+                </span>
+              )}
+              <svg
+                className={`h-4 w-4 shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M4 6l4 4 4-4" />
+              </svg>
+            </button>
+
+            {dropdownOpen && hoveredFilament && (
+              <div className="pointer-events-none absolute top-0 right-[calc(100%+12px)] flex flex-col items-center gap-1.5 z-20">
+                <div
+                  className="h-16 w-16 border-2 border-black"
+                  style={{ backgroundColor: `#${hoveredFilament.color_hex}` }}
+                />
+                <span className="font-mono text-xs">{hoveredFilament.color_hex}</span>
+              </div>
+            )}
+
+            {dropdownOpen && (
+              <ul className="absolute z-10 mt-[-2px] max-h-60 w-full overflow-auto border-2 border-black bg-white">
+                {filaments.map((f) => (
+                  <li key={f.id}>
+                    <button
+                      type="button"
+                      onClick={() => selectFilament(f.id)}
+                      className={`flex w-full items-center gap-2.5 px-3 py-2 text-left font-normal hover:bg-gray-100 ${f.id === filamentId ? 'bg-gray-100 font-semibold' : ''}`}
+                    >
+                      <span
+                        className="inline-block h-4 w-4 shrink-0 rounded-full border border-black/20 cursor-default"
+                        style={{ backgroundColor: `#${f.color_hex}` }}
+                        onMouseEnter={() => setHoveredFilament(f)}
+                        onMouseLeave={() => setHoveredFilament(null)}
+                      />
+                      {f.filament_name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
 
         <button
           onClick={handleSubmit}

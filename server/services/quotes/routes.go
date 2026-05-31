@@ -38,6 +38,12 @@ func (h *Handler) postQuote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	filament, err := h.filamentRepo.GetFilamentByID(filamentID)
+	if err != nil {
+		utils.WriteError(w, http.StatusNotFound, fmt.Errorf("filament not found"))
+		return
+	}
+
 	uf, ufh, err := r.FormFile("printable")
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
@@ -60,19 +66,13 @@ func (h *Handler) postQuote(w http.ResponseWriter, r *http.Request) {
 	}
 	tmpInput.Close()
 
-	grams, err := SliceFilament(tmpInput.Name(), ext)
+	grams, err := SliceFilament(tmpInput.Name(), ext, filament.IniFilePath, "")
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	filament, err := h.filamentRepo.GetFilamentByID(filamentID)
-	if err != nil {
-		utils.WriteError(w, http.StatusNotFound, fmt.Errorf("filament not found"))
-		return
-	}
-
 	price := CalculateQuote(grams, filament.CostPerGram)
 
-	utils.WriteJSON(w, http.StatusOK, map[string]float64{"price_eur": price, "price_og": grams * filament.CostPerGram})
+	utils.WriteJSON(w, http.StatusOK, map[string]float64{"price_eur": price})
 }

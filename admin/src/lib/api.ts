@@ -89,6 +89,7 @@ export interface DashboardStats {
   pending: number
   in_progress: number
   total_revenue: number
+  realized_revenue: number
 }
 
 export async function login(email: string, password: string) {
@@ -112,10 +113,8 @@ export async function fetchOrders(status?: string) {
 }
 
 export async function fetchOrder(id: string) {
-  const res = await api.get<Order[]>('/orders')
-  const order = res.data.find((o) => o.id === id)
-  if (!order) throw new Error('Order not found')
-  return order
+  const res = await api.get<Order>(`/orders/${id}`)
+  return res.data
 }
 
 export async function updateOrderStatus(id: string, status: string) {
@@ -153,7 +152,7 @@ export async function createFilament(data: CreateFilamentInput) {
     if (typeof v === 'string' && v !== '') fd.append(field, v)
   }
 
-  const res = await api.post<Filament>(`${BASE_URL}/api/v1/filaments`, fd)
+  const res = await api.post<Filament>('/filaments', fd)
   return res.data
 }
 
@@ -196,10 +195,32 @@ export async function updateFilament(id: string, data: UpdateFilamentInput) {
     if (typeof v === 'string' && v !== '') fd.append(field, v)
   }
 
-  const res = await api.patch<Filament>(`${BASE_URL}/api/v1/filaments/${id}`, fd)
+  const res = await api.put<Filament>(`/filaments/${id}`, fd)
   return res.data
 }
 
 export async function deleteFilament(id: string) {
-  await api.delete(`${BASE_URL}/api/v1/filaments/${id}`)
+  await api.delete(`/filaments/${id}`)
+}
+
+export interface Job {
+  id: string
+  order_id: string
+  filament_id: string
+  filament_name: string
+  gcode_path: string
+  status: string
+  created_at: string
+}
+
+export async function fetchJobs(status?: string) {
+  const res = await api.get<Job[]>('/jobs', {
+    params: status ? { status } : undefined,
+  })
+  return res.data
+}
+
+export async function updateJobStatus(id: string, status: string) {
+  const res = await api.patch<{ status: string }>(`/jobs/${id}/status`, { status })
+  return res.data
 }

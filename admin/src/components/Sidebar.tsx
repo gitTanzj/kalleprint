@@ -29,6 +29,13 @@ export function Sidebar() {
           Orders
         </Link>
         <Link
+          to="/jobs"
+          className="border-2 border-transparent px-3 py-2 font-semibold hover:border-black"
+          activeProps={{ className: 'border-2 border-black px-3 py-2 font-semibold bg-gray-100' }}
+        >
+          Jobs
+        </Link>
+        <Link
           to="/filaments"
           className="border-2 border-transparent px-3 py-2 font-semibold hover:border-black"
           activeProps={{ className: 'border-2 border-black px-3 py-2 font-semibold bg-gray-100' }}

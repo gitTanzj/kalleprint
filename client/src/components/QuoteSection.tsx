@@ -151,7 +151,7 @@ export default function QuoteSection({ quote, file, filename, filamentId, isRequ
             <button
               type="submit"
               disabled={placeOrder.isPending || !name || !email || !address || !filamentId}
-              className="hover-black border-2 border-white bg-white px-8 py-3 font-semibold text-black disabled:cursor-not-allowed disabled:opacity-40"
+              className="hover-black border-2 border-white bg-white px-8 py-3 font-semibold text-black disabled:cursor-not-allowed hover:cursor-pointer disabled:opacity-40"
             >
               {placeOrder.isPending ? 'Placing order…' : 'Place Order'}
             </button>

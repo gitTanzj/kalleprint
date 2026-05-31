@@ -12,24 +12,36 @@ import (
 	"github.com/gitTanzj/server/config"
 )
 
-var profitMultiplier = 1.2
+const PROFIT_MULTIPLIER = 1.8
 
 func CalculateQuote(amount float64, filamentCost float64) float64 {
-	price := amount * filamentCost * profitMultiplier
-	return math.Round(price*100) / 100
+	price := amount * filamentCost * PROFIT_MULTIPLIER
+	price_rounded := math.Round(price*100) / 100
+	return math.Max(price_rounded, 1)
 }
 
-func SliceFilament(inputPath, ext string) (float64, error) {
-	tmpGcode, err := os.CreateTemp("", "quote-*.gcode")
-	if err != nil {
-		return 0, err
+// SliceFilament slices the input file and returns grams of filament used.
+// If gcodeOut is non-empty the gcode is written there and kept; otherwise a
+// temporary file is used and removed automatically.
+func SliceFilament(inputPath, ext, iniFilePath, gcodeOut string) (float64, error) {
+	cleanup := gcodeOut == ""
+	if cleanup {
+		tmpGcode, err := os.CreateTemp("", "quote-*.gcode")
+		if err != nil {
+			return 0, err
+		}
+		tmpGcode.Close()
+		gcodeOut = tmpGcode.Name()
+		defer os.Remove(gcodeOut)
 	}
-	tmpGcode.Close()
-	defer os.Remove(tmpGcode.Name())
 
-	args := []string{"--slice", "--output", tmpGcode.Name()}
+	args := []string{"--slice", "--output", gcodeOut}
 	if !strings.EqualFold(ext, ".3mf") {
-		args = append(args, "--load", config.Envs.PrusaSlicerConfig)
+		cfg := iniFilePath
+		if cfg == "" {
+			cfg = config.Envs.PrusaSlicerConfig
+		}
+		args = append(args, "--load", cfg)
 	}
 	args = append(args, inputPath)
 
@@ -37,7 +49,7 @@ func SliceFilament(inputPath, ext string) (float64, error) {
 		return 0, fmt.Errorf("slicer failed: %w: %s", err, out)
 	}
 
-	return parseFilamentGrams(tmpGcode.Name())
+	return parseFilamentGrams(gcodeOut)
 }
 
 func parseFilamentGrams(gcodePath string) (float64, error) {

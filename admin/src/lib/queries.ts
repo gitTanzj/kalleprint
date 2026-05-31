@@ -5,11 +5,13 @@ import {
   deleteFilament,
   fetchDashboard,
   fetchFilaments,
+  fetchJobs,
   fetchOrder,
   fetchOrders,
   login,
   saveToken,
   updateFilament,
+  updateJobStatus,
   updateOrderStatus,
 } from './api'
 
@@ -65,6 +67,24 @@ export function useDeleteFilament() {
   return useMutation({
     mutationFn: deleteFilament,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['filaments'] }),
+  })
+}
+
+export function useJobs(status?: string) {
+  return useQuery({
+    queryKey: ['jobs', status],
+    queryFn: () => fetchJobs(status),
+  })
+}
+
+export function useUpdateJobStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      updateJobStatus(id, status),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['jobs'] })
+    },
   })
 }
 

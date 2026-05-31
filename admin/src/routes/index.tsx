@@ -18,13 +18,17 @@ function DashboardPage() {
       {statsLoading ? (
         <p>Loading…</p>
       ) : stats ? (
-        <div className="mb-8 grid grid-cols-4 gap-4">
+        <div className="mb-8 grid grid-cols-5 gap-4">
           <StatCard label="Total Orders" value={stats.total_orders} />
           <StatCard label="Pending" value={stats.pending} />
           <StatCard label="In Progress" value={stats.in_progress} />
           <StatCard
             label="Total Revenue"
             value={`€${stats.total_revenue.toFixed(2)}`}
+          />
+          <StatCard
+            label="Realized Revenue"
+            value={`€${stats.realized_revenue.toFixed(2)}`}
           />
         </div>
       ) : null}

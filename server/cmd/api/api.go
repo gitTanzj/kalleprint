@@ -48,25 +48,26 @@ func (s *APIServer) Run() error {
 	healthHandler.RegisterRoutes(subrouter)
 
 	filamentsRepository := filaments.NewRepository(s.db)
-	filamentsHandler := filaments.NewHandler(filamentsRepository, s.db)
+	filamentsHandler := filaments.NewHandler(filamentsRepository)
 
 	quotesHandler := quotes.NewHandler(filamentsRepository)
 	quotesHandler.RegisterRoutes(subrouter)
 	filamentsHandler.RegisterRoutes(subrouter)
 
+	jobsRepository := jobs.NewRepository(s.db)
+	jobsHandler := jobs.NewHandler(jobsRepository)
+	jobsHandler.RegisterRoutes(subrouter)
+
 	ordersRepository := orders.NewRepository(s.db)
-	ordersHandler := orders.NewHandler(ordersRepository, filamentsRepository)
+	ordersHandler := orders.NewHandler(ordersRepository, filamentsRepository, jobsRepository)
 	ordersHandler.RegisterRoutes(subrouter)
 
 	printsRepository := prints.NewRepository(s.db)
 	printsHandler := prints.NewHandler(printsRepository)
 	printsHandler.RegisterRoutes(subrouter)
 
-	jobsHandler := jobs.NewHandler()
-	jobsHandler.RegisterRoutes(subrouter)
-
 	adminRepository := admin.NewRepository(s.db)
-	adminHandler := admin.NewHandler(adminRepository)
+	adminHandler := admin.NewHandler(adminRepository, filamentsRepository, jobsRepository, s.db)
 	adminHandler.RegisterRoutes(subrouter)
 
 	log.Println("Listening on", s.addr)

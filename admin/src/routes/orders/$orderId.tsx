@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { StatusBadge } from '../../components/StatusBadge'
-import { useOrder, useUpdateOrderStatus } from '../../lib/queries'
+import { useOrder, useUpdateOrderStatus, useJobs, useUpdateJobStatus } from '../../lib/queries'
 
 export const Route = createFileRoute('/orders/$orderId')({
   component: OrderDetailPage,
@@ -15,12 +15,18 @@ const VALID_STATUSES = [
   'done',
 ]
 
+const JOB_STATUSES = ['pending', 'printing', 'done']
+
 function OrderDetailPage() {
   const { orderId } = Route.useParams()
   const { data: order, isLoading } = useOrder(orderId)
+  const { data: allJobs } = useJobs()
   const updateStatus = useUpdateOrderStatus()
+  const { mutate: updateJobStatus } = useUpdateJobStatus()
   const [status, setStatus] = useState('')
   const [saved, setSaved] = useState(false)
+
+  const jobs = allJobs?.filter((j) => j.order_id === orderId) ?? []
 
   useEffect(() => {
     if (order) setStatus(order.status)
@@ -74,7 +80,7 @@ function OrderDetailPage() {
         </dl>
       </div>
 
-      <div className="border-2 border-black p-6">
+      <div className="mb-6 border-2 border-black p-6">
         <h2 className="mb-4 font-bold">Update Status</h2>
         <div className="flex items-center gap-4">
           <select
@@ -96,6 +102,50 @@ function OrderDetailPage() {
             {updateStatus.isPending ? 'Saving…' : saved ? 'Saved!' : 'Save'}
           </button>
         </div>
+      </div>
+
+      <div className="border-2 border-black p-6">
+        <h2 className="mb-4 font-bold">Jobs</h2>
+        {jobs.length === 0 ? (
+          <p className="text-gray-500">No jobs for this order</p>
+        ) : (
+          <table className="w-full border-2 border-black text-left">
+            <thead className="border-b-2 border-black bg-gray-100">
+              <tr>
+                <th className="px-4 py-2 font-semibold">ID</th>
+                <th className="px-4 py-2 font-semibold">Filament</th>
+                <th className="px-4 py-2 font-semibold">Status</th>
+                <th className="px-4 py-2 font-semibold">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {jobs.map((job) => (
+                <tr key={job.id} className="border-b border-black last:border-b-0">
+                  <td className="px-4 py-2 font-mono text-sm text-gray-500">
+                    {job.id.slice(0, 8)}
+                  </td>
+                  <td className="px-4 py-2">{job.filament_name || job.filament_id.slice(0, 8)}</td>
+                  <td className="px-4 py-2">
+                    <select
+                      value={job.status}
+                      onChange={(e) => updateJobStatus({ id: job.id, status: e.target.value })}
+                      className="border-2 border-black bg-white px-2 py-1 text-sm font-semibold"
+                    >
+                      {JOB_STATUSES.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-4 py-2 text-gray-500">
+                    {new Date(job.created_at).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )

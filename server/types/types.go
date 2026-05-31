@@ -34,10 +34,11 @@ type AdminUser struct {
 }
 
 type DashboardStats struct {
-	TotalOrders   int     `json:"total_orders"`
-	Pending       int     `json:"pending"`
-	InProgress    int     `json:"in_progress"`
-	TotalRevenue  float64 `json:"total_revenue"`
+	TotalOrders      int     `json:"total_orders"`
+	Pending          int     `json:"pending"`
+	InProgress       int     `json:"in_progress"`
+	TotalRevenue     float64 `json:"total_revenue"`
+	RealizedRevenue  float64 `json:"realized_revenue"`
 }
 
 type CreateFilamentPayload struct {
@@ -52,9 +53,6 @@ type AdminRepository interface {
 	GetOrderByID(id string) (*Order, error)
 	UpdateOrderStatus(id, status string) error
 	GetFilaments() ([]*Filament, error)
-	CreateFilament(name string, amountGrams int, costPerGram float64) (*Filament, error)
-	UpdateFilament(id, name string, amountGrams int, costPerGram float64) (*Filament, error)
-	DeleteFilament(id string) error
 	GetDashboardStats() (*DashboardStats, error)
 }
 
@@ -101,4 +99,21 @@ type FilamentRepository interface {
 
 type PrintRepository interface {
 	GetPrints() ([]*Print, error)
+}
+
+type Job struct {
+	Id            string    `json:"id"`
+	OrderId       string    `json:"order_id"`
+	FilamentId    string    `json:"filament_id"`
+	FilamentName  string    `json:"filament_name,omitempty"`
+	GcodePath     string    `json:"gcode_path"`
+	Status        string    `json:"status"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
+type JobRepository interface {
+	CreateJob(orderID, filamentID, gcodePath string) (*Job, error)
+	GetJobs() ([]*Job, error)
+	GetJobByID(id string) (*Job, error)
+	UpdateJobStatus(id, status string) error
 }
