@@ -17,7 +17,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget ca-certifi
     && rm prusa.AppImage
 
 ENV PRUSA_SLICER_PATH=/prusa-slicer/AppRun
-ENV PRUSA_SLICER_CONFIG=/prusa-slicer/usr/bin/resources/profiles/Creality.ini
 ENV LD_LIBRARY_PATH=/prusa-slicer/usr/lib
 
 EXPOSE 8080

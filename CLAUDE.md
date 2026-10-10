@@ -64,15 +64,16 @@ Services are wired in `cmd/api/api.go` which calls `RegisterRoutes()` on each, p
 **Current services:** `health`, `filaments`, `orders`, `prints`, `quotes`, `jobs` (WIP — routes defined, handlers empty).
 
 **Quotes + pricing** (`services/quotes/service.go`):
-- `SliceFilament()` invokes PrusaSlicer CLI, writes gcode to a temp file, then parses `; filament used [cm3] =` from the gcode
-- Converts cm³ → grams using a hardcoded density of 1.25 g/cm³
+- `SliceFilament()` invokes PrusaSlicer CLI with layered configs: `--load printer.ini --load print.ini --load <filament>.ini` (later wins). Printer/print are static Creality K1 profiles embedded from `profiles/k1/`; the filament layer is regenerated per slice from the admin-panel INI (whitelisted keys merged with defaults, validated) by `filamentconfig.WriteSlicerFile()`
+- Grams come from PrusaSlicer's `; filament used [g] =` (uses the filament's `filament_density`), falling back to cm³ × 1.24
 - `CalculateQuote()` applies a 20% profit multiplier: `grams × costPerGram × 1.2`
 - `POST /orders` re-slices the uploaded file independently (does not reuse the quote price)
-- `.3mf` files skip the `--load` config flag; all other extensions load `PRUSA_SLICER_CONFIG`
+- `.3mf` uploads have embedded slicer settings stripped (`strip3MFConfig`) so the K1 profiles always win
+- `pressure_advance` is a pseudo-key in `filamentconfig`; it is written as `start_filament_gcode = "SET_PRESSURE_ADVANCE ADVANCE=<n>"`
 
 **Shared types** — repository interfaces and domain structs live in `types/types.go`.
 
-**Config** — loaded from `.env` via `config/env.go` (godotenv). Required vars: `DB_*`, `PORT`, `UPLOAD_PATH`, `PRUSA_SLICER_PATH` (default `/prusa-slicer/AppRun`), `PRUSA_SLICER_CONFIG` (default `/kalleprint/config/prusa-slicer.ini`).
+**Config** — loaded from `.env` via `config/env.go` (godotenv). Required vars: `DB_*`, `PORT`, `UPLOAD_PATH`, `PRUSA_SLICER_PATH` (default `/prusa-slicer/AppRun`), optional `PRUSA_PRINTER_PROFILE` / `PRUSA_PRINT_PROFILE` (default: embedded Creality K1 profiles in `profiles/k1/`).
 
 **Migrations** — `cmd/migrate/migrations/` numbered pairs (`N_name.up.sql` / `N_name.down.sql`), run via golang-migrate through the Makefile.
 

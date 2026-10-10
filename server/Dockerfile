@@ -34,7 +34,6 @@ FROM debian:bookworm-slim AS build-release-stage
   COPY --from=prusa-stage /tmp/squashfs-root /prusa-slicer
 
   ENV PRUSA_SLICER_PATH=/prusa-slicer/AppRun
-  ENV PRUSA_SLICER_CONFIG=/prusa-slicer/usr/bin/resources/profiles/Creality.ini
 
   EXPOSE 8080
 

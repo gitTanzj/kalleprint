@@ -211,6 +211,10 @@ func (h *Handler) createFilament(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	iniParams := filamentconfig.MergeParams(filamentconfig.Defaults, overrides)
+	if err := filamentconfig.Validate(iniParams); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
 
 	var newID string
 	if err := h.db.QueryRow("SELECT UUID()").Scan(&newID); err != nil {
@@ -299,6 +303,10 @@ func (h *Handler) updateFilament(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		iniParams := filamentconfig.MergeParams(base, overrides)
+		if err := filamentconfig.Validate(iniParams); err != nil {
+			utils.WriteError(w, http.StatusBadRequest, err)
+			return
+		}
 
 		iniPath := existing.IniFilePath
 		if iniPath == "" {

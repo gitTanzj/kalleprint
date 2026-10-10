@@ -19,8 +19,9 @@ type Config struct {
 	UploadPath  string
 	StoragePath string
 
-	PrusaSlicerPath   string
-	PrusaSlicerConfig string
+	PrusaSlicerPath     string
+	PrusaPrinterProfile string
+	PrusaPrintProfile   string
 
 	PrinterAddress string
 }
@@ -42,8 +43,10 @@ func initConfig() Config {
 		UploadPath:  getEnv("UPLOAD_PATH", "/kalleprint/uploads/quotes"),
 		StoragePath: getEnv("STORAGE_DIR", "/kalleprint/storage"),
 
-		PrusaSlicerPath:   getEnv("PRUSA_SLICER_PATH", "/prusa-slicer/AppRun"),
-		PrusaSlicerConfig: getEnv("PRUSA_SLICER_CONFIG", "/kalleprint/config/prusa-slicer.ini"),
+		PrusaSlicerPath: getEnv("PRUSA_SLICER_PATH", "/prusa-slicer/AppRun"),
+		// Empty means use the embedded Creality K1 profiles (see profiles/).
+		PrusaPrinterProfile: getEnv("PRUSA_PRINTER_PROFILE", ""),
+		PrusaPrintProfile:   getEnv("PRUSA_PRINT_PROFILE", ""),
 
 		PrinterAddress: getEnv("PRINTER_ADDRESS", "http://127.0.0.1"),
 	}

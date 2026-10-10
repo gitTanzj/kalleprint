@@ -7,7 +7,8 @@ export const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -51,7 +52,146 @@ export interface Order {
   created_at: string
 }
 
-export interface Filament {
+export interface SlicerField {
+  key: string
+  label: string
+  /** Server-side default, shown as the input placeholder. */
+  placeholder: string
+  step?: string
+  group: 'Temperature' | 'Flow' | 'Cooling' | 'Retraction'
+}
+
+// Per-filament PrusaSlicer settings editable in the admin panel. Printer and
+// print settings come from the server's static Creality K1 profiles.
+export const SLICER_FIELDS = [
+  {
+    key: 'temperature',
+    label: 'Nozzle Temp (°C)',
+    placeholder: '210',
+    group: 'Temperature',
+  },
+  {
+    key: 'first_layer_temperature',
+    label: 'First Layer Nozzle (°C)',
+    placeholder: '215',
+    group: 'Temperature',
+  },
+  {
+    key: 'bed_temperature',
+    label: 'Bed Temp (°C)',
+    placeholder: '60',
+    group: 'Temperature',
+  },
+  {
+    key: 'first_layer_bed_temperature',
+    label: 'First Layer Bed (°C)',
+    placeholder: '60',
+    group: 'Temperature',
+  },
+  {
+    key: 'filament_max_volumetric_speed',
+    label: 'Max Flow (mm³/s)',
+    placeholder: '18',
+    step: '0.5',
+    group: 'Flow',
+  },
+  {
+    key: 'extrusion_multiplier',
+    label: 'Extrusion Mult.',
+    placeholder: '0.98',
+    step: '0.01',
+    group: 'Flow',
+  },
+  {
+    key: 'pressure_advance',
+    label: 'Pressure Advance',
+    placeholder: '0.04',
+    step: '0.001',
+    group: 'Flow',
+  },
+  {
+    key: 'filament_diameter',
+    label: 'Diameter (mm)',
+    placeholder: '1.75',
+    step: '0.01',
+    group: 'Flow',
+  },
+  {
+    key: 'filament_density',
+    label: 'Density (g/cm³)',
+    placeholder: '1.24',
+    step: '0.01',
+    group: 'Flow',
+  },
+  {
+    key: 'min_fan_speed',
+    label: 'Min Fan (%)',
+    placeholder: '100',
+    group: 'Cooling',
+  },
+  {
+    key: 'max_fan_speed',
+    label: 'Max Fan (%)',
+    placeholder: '100',
+    group: 'Cooling',
+  },
+  {
+    key: 'bridge_fan_speed',
+    label: 'Bridge Fan (%)',
+    placeholder: '100',
+    group: 'Cooling',
+  },
+  {
+    key: 'disable_fan_first_layers',
+    label: 'Fan Off Layers',
+    placeholder: '1',
+    group: 'Cooling',
+  },
+  {
+    key: 'full_fan_speed_layer',
+    label: 'Full Fan From Layer',
+    placeholder: '3',
+    group: 'Cooling',
+  },
+  {
+    key: 'slowdown_below_layer_time',
+    label: 'Slow Down Below (s)',
+    placeholder: '8',
+    step: '0.5',
+    group: 'Cooling',
+  },
+  {
+    key: 'min_print_speed',
+    label: 'Min Print Speed (mm/s)',
+    placeholder: '15',
+    group: 'Cooling',
+  },
+  {
+    key: 'filament_retract_length',
+    label: 'Retract Length (mm)',
+    placeholder: '0.8',
+    step: '0.05',
+    group: 'Retraction',
+  },
+  {
+    key: 'filament_retract_speed',
+    label: 'Retract Speed (mm/s)',
+    placeholder: '40',
+    group: 'Retraction',
+  },
+] as const satisfies ReadonlyArray<SlicerField>
+
+export type SlicerKey = (typeof SLICER_FIELDS)[number]['key']
+export type SlicerValues = Partial<Record<SlicerKey, string>>
+
+function appendSlicerValues(fd: FormData, values: SlicerValues) {
+  for (const { key } of SLICER_FIELDS) {
+    const v = values[key]
+    if (v) fd.append(key, v)
+  }
+}
+
+export interface Filament extends Record<SlicerKey, string> {
   id: string
   filament_name: string
   current_amount: number
@@ -59,13 +199,6 @@ export interface Filament {
   color_hex: string
   ini_file_path: string
   filament_type: string
-  temperature: string
-  bed_temperature: string
-  first_layer_temperature: string
-  first_layer_bed_temperature: string
-  filament_diameter: string
-  extrusion_multiplier: string
-  filament_density: string
   filament_cost: string
 }
 
@@ -75,13 +208,7 @@ export interface CreateFilamentInput {
   total_price: number
   color_hex: string
   filament_type: string
-  temperature?: string
-  bed_temperature?: string
-  first_layer_temperature?: string
-  first_layer_bed_temperature?: string
-  filament_diameter?: string
-  extrusion_multiplier?: string
-  filament_density?: string
+  slicer: SlicerValues
 }
 
 export interface DashboardStats {
@@ -133,24 +260,14 @@ export async function createFilament(data: CreateFilamentInput) {
   const fd = new FormData()
   fd.append('filament_name', data.name)
   fd.append('filament_stock', String(data.amount_grams))
-  fd.append('filament_cost_per_gram', String(data.total_price / data.amount_grams))
+  fd.append(
+    'filament_cost_per_gram',
+    String(data.total_price / data.amount_grams),
+  )
   fd.append('filament_color_hex', data.color_hex)
   fd.append('filament_type', data.filament_type)
   fd.append('filament_cost', String(data.total_price))
-
-  const optional: Array<[keyof CreateFilamentInput, string]> = [
-    ['temperature', 'temperature'],
-    ['bed_temperature', 'bed_temperature'],
-    ['first_layer_temperature', 'first_layer_temperature'],
-    ['first_layer_bed_temperature', 'first_layer_bed_temperature'],
-    ['filament_diameter', 'filament_diameter'],
-    ['extrusion_multiplier', 'extrusion_multiplier'],
-    ['filament_density', 'filament_density'],
-  ]
-  for (const [key, field] of optional) {
-    const v = data[key]
-    if (typeof v === 'string' && v !== '') fd.append(field, v)
-  }
+  appendSlicerValues(fd, data.slicer)
 
   const res = await api.post<Filament>('/filaments', fd)
   return res.data
@@ -162,38 +279,25 @@ export interface UpdateFilamentInput {
   total_price?: number
   color_hex?: string
   filament_type?: string
-  temperature?: string
-  bed_temperature?: string
-  first_layer_temperature?: string
-  first_layer_bed_temperature?: string
-  filament_diameter?: string
-  extrusion_multiplier?: string
-  filament_density?: string
+  slicer?: SlicerValues
 }
 
 export async function updateFilament(id: string, data: UpdateFilamentInput) {
   const fd = new FormData()
   if (data.name) fd.append('filament_name', data.name)
-  if (data.amount_grams != null) fd.append('filament_stock', String(data.amount_grams))
+  if (data.amount_grams != null)
+    fd.append('filament_stock', String(data.amount_grams))
   if (data.amount_grams != null && data.total_price != null)
-    fd.append('filament_cost_per_gram', String(data.total_price / data.amount_grams))
-  if (data.total_price != null) fd.append('filament_cost', String(data.total_price))
+    fd.append(
+      'filament_cost_per_gram',
+      String(data.total_price / data.amount_grams),
+    )
+  if (data.total_price != null)
+    fd.append('filament_cost', String(data.total_price))
   if (data.color_hex) fd.append('filament_color_hex', data.color_hex)
 
-  const iniFields: Array<[keyof UpdateFilamentInput, string]> = [
-    ['filament_type', 'filament_type'],
-    ['temperature', 'temperature'],
-    ['bed_temperature', 'bed_temperature'],
-    ['first_layer_temperature', 'first_layer_temperature'],
-    ['first_layer_bed_temperature', 'first_layer_bed_temperature'],
-    ['filament_diameter', 'filament_diameter'],
-    ['extrusion_multiplier', 'extrusion_multiplier'],
-    ['filament_density', 'filament_density'],
-  ]
-  for (const [key, field] of iniFields) {
-    const v = data[key]
-    if (typeof v === 'string' && v !== '') fd.append(field, v)
-  }
+  if (data.filament_type) fd.append('filament_type', data.filament_type)
+  if (data.slicer) appendSlicerValues(fd, data.slicer)
 
   const res = await api.put<Filament>(`/filaments/${id}`, fd)
   return res.data
@@ -221,6 +325,8 @@ export async function fetchJobs(status?: string) {
 }
 
 export async function updateJobStatus(id: string, status: string) {
-  const res = await api.patch<{ status: string }>(`/jobs/${id}/status`, { status })
+  const res = await api.patch<{ status: string }>(`/jobs/${id}/status`, {
+    status,
+  })
   return res.data
 }

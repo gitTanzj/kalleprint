@@ -82,6 +82,20 @@ type Filament struct {
 	ExtrusionMultiplier       string `json:"extrusion_multiplier"`
 	FilamentDensity           string `json:"filament_density"`
 	FilamentCost              string `json:"filament_cost"`
+
+	FilamentMaxVolumetricSpeed string `json:"filament_max_volumetric_speed"`
+	Cooling                    string `json:"cooling"`
+	FanAlwaysOn                string `json:"fan_always_on"`
+	MinFanSpeed                string `json:"min_fan_speed"`
+	MaxFanSpeed                string `json:"max_fan_speed"`
+	BridgeFanSpeed             string `json:"bridge_fan_speed"`
+	DisableFanFirstLayers      string `json:"disable_fan_first_layers"`
+	FullFanSpeedLayer          string `json:"full_fan_speed_layer"`
+	SlowdownBelowLayerTime     string `json:"slowdown_below_layer_time"`
+	MinPrintSpeed              string `json:"min_print_speed"`
+	FilamentRetractLength      string `json:"filament_retract_length"`
+	FilamentRetractSpeed       string `json:"filament_retract_speed"`
+	PressureAdvance            string `json:"pressure_advance"`
 }
 
 type OrderRepository interface {

@@ -6,7 +6,8 @@ import {
   useFilaments,
   useUpdateFilament,
 } from '../lib/queries'
-import type { Filament } from '../lib/api'
+import { SLICER_FIELDS } from '../lib/api'
+import type { Filament, SlicerField, SlicerValues } from '../lib/api'
 
 export const Route = createFileRoute('/filaments')({ component: FilamentsPage })
 
@@ -16,13 +17,7 @@ interface FilamentForm {
   total_price: string
   color_hex: string
   filament_type: string
-  temperature: string
-  bed_temperature: string
-  first_layer_temperature: string
-  first_layer_bed_temperature: string
-  filament_diameter: string
-  extrusion_multiplier: string
-  filament_density: string
+  slicer: SlicerValues
 }
 
 const emptyForm: FilamentForm = {
@@ -31,13 +26,7 @@ const emptyForm: FilamentForm = {
   total_price: '',
   color_hex: '#ffffff',
   filament_type: 'PLA',
-  temperature: '',
-  bed_temperature: '',
-  first_layer_temperature: '',
-  first_layer_bed_temperature: '',
-  filament_diameter: '',
-  extrusion_multiplier: '',
-  filament_density: '',
+  slicer: {},
 }
 
 function costPerGram(f: FilamentForm): string {
@@ -72,13 +61,7 @@ function FilamentsPage() {
       total_price: totalPrice,
       color_hex: f.color_hex.startsWith('#') ? f.color_hex : `#${f.color_hex}`,
       filament_type: f.filament_type,
-      temperature: f.temperature,
-      bed_temperature: f.bed_temperature,
-      first_layer_temperature: f.first_layer_temperature,
-      first_layer_bed_temperature: f.first_layer_bed_temperature,
-      filament_diameter: f.filament_diameter,
-      extrusion_multiplier: f.extrusion_multiplier,
-      filament_density: f.filament_density,
+      slicer: Object.fromEntries(SLICER_FIELDS.map(({ key }) => [key, f[key]])),
     })
   }
 
@@ -92,13 +75,7 @@ function FilamentsPage() {
         total_price: parseFloat(addForm.total_price),
         color_hex: addForm.color_hex.replace(/^#/, ''),
         filament_type: addForm.filament_type,
-        temperature: addForm.temperature,
-        bed_temperature: addForm.bed_temperature,
-        first_layer_temperature: addForm.first_layer_temperature,
-        first_layer_bed_temperature: addForm.first_layer_bed_temperature,
-        filament_diameter: addForm.filament_diameter,
-        extrusion_multiplier: addForm.extrusion_multiplier,
-        filament_density: addForm.filament_density,
+        slicer: addForm.slicer,
       },
       { onSuccess: () => setAddForm(null) },
     )
@@ -115,13 +92,7 @@ function FilamentsPage() {
         total_price: parseFloat(editForm.total_price),
         color_hex: editForm.color_hex.replace(/^#/, ''),
         filament_type: editForm.filament_type || undefined,
-        temperature: editForm.temperature || undefined,
-        bed_temperature: editForm.bed_temperature || undefined,
-        first_layer_temperature: editForm.first_layer_temperature || undefined,
-        first_layer_bed_temperature: editForm.first_layer_bed_temperature || undefined,
-        filament_diameter: editForm.filament_diameter || undefined,
-        extrusion_multiplier: editForm.extrusion_multiplier || undefined,
-        filament_density: editForm.filament_density || undefined,
+        slicer: editForm.slicer,
       },
       { onSuccess: () => setEditId(null) },
     )
@@ -177,27 +148,37 @@ function FilamentsPage() {
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-xs font-semibold">Stock (g)</label>
+                        <label className="text-xs font-semibold">
+                          Stock (g)
+                        </label>
                         <input
                           type="number"
                           min="1"
                           value={editForm.amount_grams}
                           onChange={(e) =>
-                            setEditForm({ ...editForm, amount_grams: e.target.value })
+                            setEditForm({
+                              ...editForm,
+                              amount_grams: e.target.value,
+                            })
                           }
                           required
                           className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-xs font-semibold">Spool Price (€)</label>
+                        <label className="text-xs font-semibold">
+                          Spool Price (€)
+                        </label>
                         <input
                           type="number"
                           min="0.01"
                           step="0.01"
                           value={editForm.total_price}
                           onChange={(e) =>
-                            setEditForm({ ...editForm, total_price: e.target.value })
+                            setEditForm({
+                              ...editForm,
+                              total_price: e.target.value,
+                            })
                           }
                           required
                           className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
@@ -215,17 +196,25 @@ function FilamentsPage() {
                           type="color"
                           value={editForm.color_hex}
                           onChange={(e) =>
-                            setEditForm({ ...editForm, color_hex: e.target.value })
+                            setEditForm({
+                              ...editForm,
+                              color_hex: e.target.value,
+                            })
                           }
                           className="h-[38px] w-16 border-2 border-black bg-white p-0"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-xs font-semibold">Filament Type</label>
+                        <label className="text-xs font-semibold">
+                          Filament Type
+                        </label>
                         <input
                           value={editForm.filament_type}
                           onChange={(e) =>
-                            setEditForm({ ...editForm, filament_type: e.target.value })
+                            setEditForm({
+                              ...editForm,
+                              filament_type: e.target.value,
+                            })
                           }
                           placeholder="PLA"
                           className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
@@ -233,119 +222,13 @@ function FilamentsPage() {
                       </div>
                     </div>
 
-                    <fieldset className="flex flex-col gap-3 border-2 border-black p-4">
-                      <legend className="px-2 text-xs font-semibold">
-                        Slicer profile (leave blank to keep existing values)
-                      </legend>
-                      <div className="flex flex-wrap gap-3">
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs font-semibold">Nozzle Temp (°C)</label>
-                          <input
-                            type="number"
-                            value={editForm.temperature}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, temperature: e.target.value })
-                            }
-                            placeholder="220"
-                            className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs font-semibold">Bed Temp (°C)</label>
-                          <input
-                            type="number"
-                            value={editForm.bed_temperature}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, bed_temperature: e.target.value })
-                            }
-                            placeholder="60"
-                            className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs font-semibold">
-                            First Layer Nozzle (°C)
-                          </label>
-                          <input
-                            type="number"
-                            value={editForm.first_layer_temperature}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                first_layer_temperature: e.target.value,
-                              })
-                            }
-                            placeholder="225"
-                            className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs font-semibold">
-                            First Layer Bed (°C)
-                          </label>
-                          <input
-                            type="number"
-                            value={editForm.first_layer_bed_temperature}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                first_layer_bed_temperature: e.target.value,
-                              })
-                            }
-                            placeholder="65"
-                            className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs font-semibold">Diameter (mm)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={editForm.filament_diameter}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                filament_diameter: e.target.value,
-                              })
-                            }
-                            placeholder="1.75"
-                            className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs font-semibold">Extrusion Mult.</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={editForm.extrusion_multiplier}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                extrusion_multiplier: e.target.value,
-                              })
-                            }
-                            placeholder="1"
-                            className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs font-semibold">Density (g/cm³)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={editForm.filament_density}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                filament_density: e.target.value,
-                              })
-                            }
-                            placeholder="1.24"
-                            className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-                          />
-                        </div>
-                      </div>
-                    </fieldset>
+                    <SlicerFieldset
+                      legend="Slicer profile (leave blank to keep existing values)"
+                      values={editForm.slicer}
+                      onChange={(slicer) =>
+                        setEditForm({ ...editForm, slicer })
+                      }
+                    />
 
                     <div className="flex gap-3">
                       <button
@@ -420,7 +303,9 @@ function FilamentsPage() {
                 <label className="text-xs font-semibold">Name</label>
                 <input
                   value={addForm.name}
-                  onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, name: e.target.value })
+                  }
                   required
                   className="border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
                 />
@@ -484,113 +369,11 @@ function FilamentsPage() {
               </div>
             </div>
 
-            <fieldset className="flex flex-col gap-3 border-2 border-black p-4">
-              <legend className="px-2 text-xs font-semibold">
-                Slicer profile (optional, defaults shown)
-              </legend>
-              <div className="flex flex-wrap gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold">Nozzle Temp (°C)</label>
-                  <input
-                    type="number"
-                    value={addForm.temperature}
-                    onChange={(e) =>
-                      setAddForm({ ...addForm, temperature: e.target.value })
-                    }
-                    placeholder="220"
-                    className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold">Bed Temp (°C)</label>
-                  <input
-                    type="number"
-                    value={addForm.bed_temperature}
-                    onChange={(e) =>
-                      setAddForm({ ...addForm, bed_temperature: e.target.value })
-                    }
-                    placeholder="60"
-                    className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold">
-                    First Layer Nozzle (°C)
-                  </label>
-                  <input
-                    type="number"
-                    value={addForm.first_layer_temperature}
-                    onChange={(e) =>
-                      setAddForm({
-                        ...addForm,
-                        first_layer_temperature: e.target.value,
-                      })
-                    }
-                    placeholder="225"
-                    className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold">
-                    First Layer Bed (°C)
-                  </label>
-                  <input
-                    type="number"
-                    value={addForm.first_layer_bed_temperature}
-                    onChange={(e) =>
-                      setAddForm({
-                        ...addForm,
-                        first_layer_bed_temperature: e.target.value,
-                      })
-                    }
-                    placeholder="65"
-                    className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold">Diameter (mm)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={addForm.filament_diameter}
-                    onChange={(e) =>
-                      setAddForm({ ...addForm, filament_diameter: e.target.value })
-                    }
-                    placeholder="1.75"
-                    className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold">Extrusion Mult.</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={addForm.extrusion_multiplier}
-                    onChange={(e) =>
-                      setAddForm({
-                        ...addForm,
-                        extrusion_multiplier: e.target.value,
-                      })
-                    }
-                    placeholder="1"
-                    className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold">Density (g/cm³)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={addForm.filament_density}
-                    onChange={(e) =>
-                      setAddForm({ ...addForm, filament_density: e.target.value })
-                    }
-                    placeholder="1.24"
-                    className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
-                  />
-                </div>
-              </div>
-            </fieldset>
+            <SlicerFieldset
+              legend="Slicer profile (optional, defaults shown)"
+              values={addForm.slicer}
+              onChange={(slicer) => setAddForm({ ...addForm, slicer })}
+            />
 
             <div className="flex gap-3">
               <button
@@ -612,5 +395,58 @@ function FilamentsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+const SLICER_GROUPS: Array<SlicerField['group']> = [
+  'Temperature',
+  'Flow',
+  'Cooling',
+  'Retraction',
+]
+
+function SlicerFieldset({
+  legend,
+  values,
+  onChange,
+}: {
+  legend: string
+  values: SlicerValues
+  onChange: (values: SlicerValues) => void
+}) {
+  return (
+    <fieldset className="flex flex-col gap-4 border-2 border-black p-4">
+      <legend className="px-2 text-xs font-semibold">{legend}</legend>
+      {SLICER_GROUPS.map((group) => (
+        <div key={group} className="flex flex-col gap-2">
+          <h3 className="text-xs font-bold uppercase">{group}</h3>
+          <div className="flex flex-wrap gap-3">
+            {SLICER_FIELDS.filter((f) => f.group === group).map(
+              (f: SlicerField) => (
+                <div key={f.key} className="flex flex-col gap-1">
+                  <label
+                    htmlFor={`slicer-${f.key}`}
+                    className="text-xs font-semibold"
+                  >
+                    {f.label}
+                  </label>
+                  <input
+                    id={`slicer-${f.key}`}
+                    type="number"
+                    step={f.step ?? '1'}
+                    value={values[f.key as keyof SlicerValues] ?? ''}
+                    onChange={(e) =>
+                      onChange({ ...values, [f.key]: e.target.value })
+                    }
+                    placeholder={f.placeholder}
+                    className="w-28 border-2 border-black bg-white px-3 py-1.5 focus:outline-none"
+                  />
+                </div>
+              ),
+            )}
+          </div>
+        </div>
+      ))}
+    </fieldset>
   )
 }
